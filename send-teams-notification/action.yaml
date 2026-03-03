@@ -9,6 +9,7 @@ runs:
   using: "composite"
   steps:
     - name: Send Release Notes to Teams
+      shell: bash
       env:
         RELEASE_NAME:           ${{ inputs.release_name }}
         RELEASE_TAG:            ${{ inputs.release_tag }}
@@ -87,6 +88,7 @@ runs:
         echo "STATUS=$STATUS" >> $GITHUB_ENV
 
     - name: Verify Teams Response
+      shell: bash
       run: |
         if [ "$STATUS" != "200" ] && [ "$STATUS" != "201" ] && [ "$STATUS" != "202" ]; then
           echo "❌ Teams webhook failed with status: $STATUS"
