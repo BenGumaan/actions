@@ -1,0 +1,24 @@
+# Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,windows
+# Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,windows,linux,macos,git
+
+### Git ###
+# Ignore Mac system files
+.DS_Store
+
+# Created by git when using merge tools for conflicts
+*.BACKUP.*
+*.BASE.*
+*.LOCAL.*
+*.REMOTE.*
+*_BACKUP_*.txt
+*_BASE_*.txt
+*_LOCAL_*.txt
+*_REMOTE_*.txt
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+

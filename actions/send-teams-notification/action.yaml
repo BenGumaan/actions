@@ -1,0 +1,95 @@
+name: "Extract Release Notes"
+description: "Extract release notes from a publish event and set them as an output variable."
+inputs:
+  release-notes:
+    description: "Extracted release notes from the release event."
+    required: true
+
+runs: 
+  using: "composite"
+  steps:
+    - name: Send Release Notes to Teams
+      env:
+        RELEASE_NAME:           ${{ inputs.release_name }}
+        RELEASE_TAG:            ${{ inputs.release_tag }}
+        REPO_NAME:              ${{ inputs.repo_name }}
+        CLEANED_PATCHES:        ${{ inputs.cleaned_patches }}
+        CLEANED_FULL_CHANGELOG: ${{ inputs.cleaned_full_changelog }}
+        WEBHOOK_URL:            ${{ secrets.WEBHOOK_URL_TEST }}
+      run: |
+        PAYLOAD=$(printf '{
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          "type": "AdaptiveCard",
+          "version": "1.4",
+          "body": [
+            {
+              "type": "TextBlock",
+              "text": "🚀 New Production Release %s Deployed",
+              "weight": "Bolder",
+              "size": "Large"
+            },
+            {
+              "type": "TextBlock",
+              "text": "[View Release](https://github.com/BenGumaan/%s/releases/tag/%s)",
+              "weight": "default"
+            },
+            {
+              "type": "TextBlock",
+              "text": "📌 Release Notes:",
+              "weight": "Bolder"
+            },
+            {
+              "type": "FactSet",
+              "facts": [
+                {
+                    "title": "📦 Repo Name",
+                    "value": "%s"
+                },
+              ]
+            },
+            {
+              "type": "TextBlock",
+              "text": "🩹 Patches",
+              "weight": "Bolder"
+            },
+            {
+              "type": "ColumnSet",
+              "columns": [
+                {
+                  "type": "Column",
+                  "width": "stretch",
+                  "items": [
+                    { "type": "TextBlock", "text": "%s", "wrap": true }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "TextBlock",
+              "text": "🔗 **Full Changelog**: [Click Here](%s)",
+              "wrap": true
+            }
+          ]
+        }' "$RELEASE_NAME" "$REPO_NAME" "$RELEASE_TAG" "$REPO_NAME" "$CLEANED_PATCHES" "$CLEANED_FULL_CHANGELOG")
+
+        RESPONSE=$(curl -s -w "\n%{http_code}" \
+          --max-time 10 \
+          --connect-timeout 5 \
+          -X POST "$WEBHOOK_URL" \
+          -H "Content-Type: application/json" \
+          --data-binary "$PAYLOAD")
+
+        BODY=$(echo "$RESPONSE" | head -n -1)
+        STATUS=$(echo "$RESPONSE" | tail -n 1)
+
+        echo "HTTP Status: $STATUS"
+        echo "Response body: $BODY"
+        echo "STATUS=$STATUS" >> $GITHUB_ENV
+
+    - name: Verify Teams Response
+      run: |
+        if [ "$STATUS" != "200" ] && [ "$STATUS" != "201" ] && [ "$STATUS" != "202" ]; then
+          echo "❌ Teams webhook failed with status: $STATUS"
+          exit 1
+        fi
+        echo "✅ Teams notification sent successfully"

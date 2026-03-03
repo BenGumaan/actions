@@ -1,0 +1,63 @@
+name: "Extract Release Notes"
+description: "Extract release notes from a publish event and set them as an output variable."
+
+runs: 
+  using: "composite"
+  steps:
+    - name: Extract Release Notes and Sanitize Body
+      uses: actions/github-script@v7
+      id: extract
+      with:
+        script: |
+          const release = context.payload.release;
+
+          const sanitize = (str) => (str || "")
+            .replace(/\\/g, '\\\\')
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '');
+
+          const body = release.body || "";
+          const name = sanitize(release.name);
+          const tag  = sanitize(release.tag_name);
+          const repo_name = sanitize(context.repo.repo);
+
+          const regex_patches = /[^\n]*Patches\s*(.*?)(?=\n\**Full Changelog\**:.*|$)/s;
+          const regex_full_changelog = /\*+Full Changelog\*+:\s*(https:\/\/(?:www\.)?github\.com[^\s)]+)$/m;
+
+          const match_patches        = body.match(regex_patches);
+          const match_full_changelog = body.match(regex_full_changelog);
+
+          const patchesSection      = match_patches        ? match_patches[1].trim()  : "No patches listed.";
+          const fullChangelogSection = match_full_changelog ? match_full_changelog[1].trim() : "No full changelog listed.";
+
+          const LINKBASES = {
+            JIRA:    "https://BenGumaan.atlassian.net/browse/",
+            PULL:    `https://github.com/BenGumaan/${repo_name}/pulls/`,
+          };
+
+          const LINK_REGEXES = {
+            JIRA: /\[([A-Z]+-\d+)\](?!\()/g,
+            PULL: /\(#(\d+)\)/g,
+          };
+
+          const LINK_RULES = {
+            JIRA:    { regex: LINK_REGEXES.JIRA, formatter: (_, t)      => `[${t}](${LINKBASES.JIRA}${t})` },
+            PULL:    { regex: LINK_REGEXES.PULL, formatter: (_, pr)     => `[#${pr}](${LINKBASES.PULL}${pr})` },
+          };
+
+          function formatLinks(text, formatters) {
+            return Object.entries(formatters).reduce((acc, [key, { regex, formatter }]) => {
+              regex.lastIndex = 0;
+              return acc.replace(regex, formatter);
+            }, text);
+          }
+
+          const cleanedPatches = sanitize(formatLinks(patchesSection, { JIRA: LINK_RULES.JIRA, PULL: LINK_RULES.PULL }));
+          const cleanedFullChangelog = sanitize(fullChangelogSection);
+
+          core.setOutput("release_name", name);
+          core.setOutput("release_tag", tag);
+          core.setOutput("cleaned_patches", cleanedPatches);
+          core.setOutput("cleaned_full_changelog", cleanedFullChangelog);
+          core.setOutput("repo_name", repo_name);
