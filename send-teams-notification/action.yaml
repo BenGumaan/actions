@@ -1,9 +1,25 @@
-name: "Extract Release Notes"
-description: "Extract release notes from a publish event and set them as an output variable."
+name: "Send Teams Notification"
+description: "Send a formatted release notification to Microsoft Teams via webhook"
 inputs:
-  release-notes:
-    description: "Extracted release notes from the release event."
+  webhook-url:
+    description: "Teams webhook URL"
     required: true
+  release-name:
+    description: "Release name/version"
+    required: true
+  release-tag:
+    description: "Release tag"
+    required: true
+  cleaned-patches:
+    description: "Formatted patches section"
+    required: true
+  cleaned-full_changelog:
+    description: "Full changelog URL"
+    required: true
+  repo_name:
+    description: "Repository name"
+    required: false
+    default: "Unknown"
 
 runs: 
   using: "composite"
@@ -11,12 +27,12 @@ runs:
     - name: Send Release Notes to Teams
       shell: bash
       env:
-        RELEASE_NAME:           ${{ inputs.release_name }}
-        RELEASE_TAG:            ${{ inputs.release_tag }}
+        RELEASE_NAME:           ${{ inputs.release-name }}
+        RELEASE_TAG:            ${{ inputs.release-tag }}
         REPO_NAME:              ${{ inputs.repo_name }}
-        CLEANED_PATCHES:        ${{ inputs.cleaned_patches }}
-        CLEANED_FULL_CHANGELOG: ${{ inputs.cleaned_full_changelog }}
-        WEBHOOK_URL:            ${{ secrets.WEBHOOK_URL_TEST }}
+        CLEANED_PATCHES:        ${{ inputs.cleaned-patches }}
+        CLEANED_FULL_CHANGELOG: ${{ inputs.cleaned-full_changelog }}
+        WEBHOOK_URL:            ${{ inputs.webhook-url }}
       run: |
         PAYLOAD=$(printf '{
           "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
